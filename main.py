@@ -247,15 +247,19 @@ class PomodoroTimer:
         Returns:
             The type of the next session
         """
-        # Save current session if it was completed
-        if self._state == TimerState.RUNNING or self._state == TimerState.PAUSED:
-            self.save_session(interrupted=False)
+        # Save current session - mark as interrupted if not completed
+        was_completed = (self._state == TimerState.STOPPED and self.get_remaining_time() == 0)
+        if self._current_session != SessionType.IDLE:
+            self.save_session(interrupted=not was_completed)
         
-        if self._current_session == SessionType.WORK:
+        # Only increment pomodoro count if work session was actually completed
+        if self._current_session == SessionType.WORK and was_completed:
             self._completed_pomodoros += 1
             self._trigger_pomodoro_complete_callbacks()
-            
-            # Determine if long break or short break
+        
+        # Determine next session type based on current session
+        if self._current_session == SessionType.WORK:
+            # After work session, determine if long break or short break
             if self._completed_pomodoros % self.config.long_break_interval == 0:
                 self.start_long_break()
                 return SessionType.LONG_BREAK
@@ -263,7 +267,7 @@ class PomodoroTimer:
                 self.start_short_break()
                 return SessionType.SHORT_BREAK
         else:
-            # After any break, start work session
+            # After any break (or idle), start work session
             self.start_work_session()
             return SessionType.WORK
     
