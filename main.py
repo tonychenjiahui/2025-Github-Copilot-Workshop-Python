@@ -98,6 +98,7 @@ class PomodoroTimer:
         self._pause_time = 0
         self._completed_pomodoros = 0
         self._session_history: List[SessionRecord] = []
+        self._session_completed_naturally = False  # Flag for natural completion
         
         # Event callbacks
         self._on_timer_complete_callbacks: List[Callable] = []
@@ -125,6 +126,7 @@ class PomodoroTimer:
         self._session_duration = duration
         self._start_time = time.time()
         self._pause_time = 0
+        self._session_completed_naturally = False
         return True
     
     def pause_timer(self) -> bool:
@@ -247,20 +249,27 @@ class PomodoroTimer:
         Returns:
             The type of the next session
         """
-        # Save current session - mark as interrupted if not completed
-        was_completed = (self._state == TimerState.STOPPED and self.get_remaining_time() == 0)
-        if self._current_session != SessionType.IDLE:
-            self.save_session(interrupted=not was_completed)
+        # Determine if session was completed naturally
+        was_completed_naturally = self._session_completed_naturally
+        
+        # Save current session only if not already saved and not idle
+        if self._current_session != SessionType.IDLE and not was_completed_naturally:
+            # Session is being interrupted/transitioned before natural completion
+            self.save_session(interrupted=True)
+        
+        # Reset the completion flag for next session
+        self._session_completed_naturally = False
         
         # Only increment pomodoro count if work session was actually completed
-        if self._current_session == SessionType.WORK and was_completed:
+        if self._current_session == SessionType.WORK and was_completed_naturally:
             self._completed_pomodoros += 1
             self._trigger_pomodoro_complete_callbacks()
         
         # Determine next session type based on current session
         if self._current_session == SessionType.WORK:
             # After work session, determine if long break or short break
-            if self._completed_pomodoros % self.config.long_break_interval == 0:
+            # Only trigger long break if we've completed at least one full cycle
+            if self._completed_pomodoros > 0 and self._completed_pomodoros % self.config.long_break_interval == 0:
                 self.start_long_break()
                 return SessionType.LONG_BREAK
             else:
@@ -531,6 +540,8 @@ class PomodoroTimer:
             
             # Check if timer completed
             if remaining <= 0:
+                # Mark session as completed naturally
+                self._session_completed_naturally = True
                 self._trigger_timer_complete_callbacks()
                 self.save_session(interrupted=False)
                 self.stop_timer()
