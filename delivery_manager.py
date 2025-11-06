@@ -166,6 +166,7 @@ class DeliveryManager:
         if plate_kitchen_object is None:
             raise ValueError("plate_kitchen_object cannot be None")
         
+        # Get plate ingredients after validation
         plate_ingredients = plate_kitchen_object.get_kitchen_object_so_list()
         
         # Validate plate has ingredients
