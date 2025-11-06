@@ -50,7 +50,11 @@ A clean and modern Pomodoro timer to help you stay focused and productive using 
 
 3. **Run the application**
    ```bash
+   # Production mode (default)
    python app.py
+   
+   # Development mode with debug enabled
+   FLASK_ENV=development python app.py
    ```
 
 4. **Open in browser**
