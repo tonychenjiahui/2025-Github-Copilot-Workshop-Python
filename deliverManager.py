@@ -3,6 +3,8 @@ import random
 from typing import List, Callable, Optional
 from dataclasses import dataclass, field
 from enum import Enum
+from time_provider import TimeProvider, SystemTimeProvider
+from random_provider import RandomProvider, SystemRandomProvider
 
 
 class EventArgs:
@@ -96,16 +98,13 @@ class KitchenGameManager:
 
 
 class DeliveryManager:
-    def get_recipe_by_name(self, user_input):
-        query = f"SELECT * FROM recipes WHERE name = '{user_input}'"
-        print(f"実行クエリ: {query}")
-        return query
-    
     """配達管理クラス（Python版）"""
     
     _instance: Optional['DeliveryManager'] = None
     
-    def __init__(self, recipe_list_so: RecipeListSO):
+    def __init__(self, recipe_list_so: RecipeListSO, 
+                 time_provider: TimeProvider = None,
+                 random_provider: RandomProvider = None):
         # イベント定義
         self.on_recipe_spawned = Event()
         self.on_recipe_completed = Event()
@@ -119,20 +118,26 @@ class DeliveryManager:
         self._spawn_recipe_timer_max = 4.0
         self._waiting_recipes_max = 4
         self._successful_recipes_amount = 0
-        self._last_update_time = time.time()
+        
+        # 依存性注入
+        self._time_provider = time_provider or SystemTimeProvider()
+        self._random_provider = random_provider or SystemRandomProvider()
+        self._last_update_time = self._time_provider.get_current_time()
     
     @classmethod
-    def get_instance(cls, recipe_list_so: RecipeListSO = None) -> 'DeliveryManager':
+    def get_instance(cls, recipe_list_so: RecipeListSO = None,
+                    time_provider: TimeProvider = None,
+                    random_provider: RandomProvider = None) -> 'DeliveryManager':
         """Singletonインスタンスを取得"""
         if cls._instance is None:
             if recipe_list_so is None:
                 raise ValueError("初回作成時にはrecipe_list_soが必要です")
-            cls._instance = cls(recipe_list_so)
+            cls._instance = cls(recipe_list_so, time_provider, random_provider)
         return cls._instance
     
     def update(self):
         """フレーム更新処理（UnityのUpdate相当）"""
-        current_time = time.time()
+        current_time = self._time_provider.get_current_time()
         delta_time = current_time - self._last_update_time
         self._last_update_time = current_time
         
@@ -146,7 +151,7 @@ class DeliveryManager:
                 len(self._waiting_recipe_so_list) < self._waiting_recipes_max):
                 
                 # ランダムにレシピを選択
-                waiting_recipe_so = random.choice(self._recipe_list_so.recipe_so_list)
+                waiting_recipe_so = self._random_provider.choice(self._recipe_list_so.recipe_so_list)
                 self._waiting_recipe_so_list.append(waiting_recipe_so)
                 
                 # イベント発火
@@ -196,6 +201,30 @@ class DeliveryManager:
     def get_successful_recipes_amount(self) -> int:
         """成功したレシピ数を取得"""
         return self._successful_recipes_amount
+    
+    def get_recipe_by_name(self, recipe_name: str) -> Optional[RecipeSO]:
+        """レシピ名でレシピを安全に取得（SQL injection対策済み）"""
+        # パラメータ化されたクエリを使用する想定
+        # 実際のデータベース実装では、プレースホルダーを使用してください
+        # 例: cursor.execute("SELECT * FROM recipes WHERE name = ?", (recipe_name,))
+        
+        # この実装ではメモリ内のリストから検索
+        for recipe in self._recipe_list_so.recipe_so_list:
+            if recipe.name == recipe_name:
+                return recipe
+        return None
+    
+    def reset_for_testing(self):
+        """テスト用のリセットメソッド"""
+        self._waiting_recipe_so_list.clear()
+        self._successful_recipes_amount = 0
+        self._spawn_recipe_timer = 0.0
+        self._last_update_time = self._time_provider.get_current_time()
+    
+    @classmethod
+    def reset_instance(cls):
+        """Singletonインスタンスをリセット（テスト用）"""
+        cls._instance = None
 
 
 # 使用例
