@@ -118,6 +118,9 @@ class PomodoroTimer {
     }
     
     handleSessionComplete() {
+        // Store current mode before switching
+        const completedMode = this.state.currentMode;
+        
         // Auto-switch mode after completion
         if (this.state.currentMode === 'work') {
             if (this.state.sessionCount % 4 === 0) {
@@ -132,8 +135,8 @@ class PomodoroTimer {
         
         this.updateSessionCount();
         
-        // Show notification
-        this.showNotification();
+        // Show notification with correct mode
+        this.showNotification(completedMode);
     }
     
     changeMode(mode) {
@@ -203,11 +206,11 @@ class PomodoroTimer {
         }
     }
     
-    showNotification() {
+    showNotification(completedMode) {
         if ('Notification' in window && Notification.permission === 'granted') {
+            const modeText = completedMode === 'work' ? 'Work session' : 'Break';
             new Notification('Pomodoro Timer', {
-                body: `${this.state.currentMode === 'work' ? 'Work session' : 'Break'} completed!`,
-                icon: '/static/favicon.ico'
+                body: `${modeText} completed!`
             });
         }
     }
