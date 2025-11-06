@@ -1,0 +1,7 @@
+# Testing dependencies
+pytest==7.4.3
+pytest-cov==4.1.0
+coverage==7.3.2
+
+# Optional: for more advanced testing
+pytest-mock==3.12.0
