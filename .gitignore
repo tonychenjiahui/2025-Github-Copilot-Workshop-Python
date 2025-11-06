@@ -31,11 +31,21 @@ htmlcov/
 .hypothesis/
 
 # IDE
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# Flask
+instance/
+.webassets-cache
 
 # OS
 .DS_Store
