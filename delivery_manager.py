@@ -1,8 +1,9 @@
 import time
-import random
+import secrets
 from typing import List, Callable, Optional
 from dataclasses import dataclass, field
 from enum import Enum
+import threading
 
 
 class EventArgs:
@@ -71,15 +72,18 @@ class KitchenGameManager:
     """Kitchen game manager (Singleton)"""
     
     _instance: Optional['KitchenGameManager'] = None
+    _lock = threading.Lock()
     
     def __init__(self):
         self._is_game_playing = False
     
     @classmethod
     def get_instance(cls) -> 'KitchenGameManager':
-        """Get Singleton instance"""
+        """Get Singleton instance (Thread-safe)"""
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
     
     def is_game_playing(self) -> bool:
@@ -99,8 +103,14 @@ class DeliveryManager:
     """Delivery management class (Python version)"""
     
     _instance: Optional['DeliveryManager'] = None
+    _lock = threading.Lock()
     
     def __init__(self, recipe_list_so: RecipeListSO):
+        if recipe_list_so is None:
+            raise ValueError("recipe_list_so cannot be None")
+        if not recipe_list_so.recipe_so_list:
+            raise ValueError("recipe_list_so must contain at least one recipe")
+        
         # Event definitions
         self.on_recipe_spawned = Event()
         self.on_recipe_completed = Event()
@@ -118,11 +128,13 @@ class DeliveryManager:
     
     @classmethod
     def get_instance(cls, recipe_list_so: RecipeListSO = None) -> 'DeliveryManager':
-        """Get Singleton instance"""
+        """Get Singleton instance (Thread-safe)"""
         if cls._instance is None:
-            if recipe_list_so is None:
-                raise ValueError("recipe_list_so is required for initial creation")
-            cls._instance = cls(recipe_list_so)
+            with cls._lock:
+                if cls._instance is None:
+                    if recipe_list_so is None:
+                        raise ValueError("recipe_list_so is required for initial creation")
+                    cls._instance = cls(recipe_list_so)
         return cls._instance
     
     def update(self):
@@ -140,8 +152,8 @@ class DeliveryManager:
             if (kitchen_game_manager.is_game_playing() and 
                 len(self._waiting_recipe_so_list) < self._waiting_recipes_max):
                 
-                # Randomly select recipe
-                waiting_recipe_so = random.choice(self._recipe_list_so.recipe_so_list)
+                # Securely select random recipe using secrets module
+                waiting_recipe_so = secrets.choice(self._recipe_list_so.recipe_so_list)
                 self._waiting_recipe_so_list.append(waiting_recipe_so)
                 
                 # Fire event
@@ -150,8 +162,18 @@ class DeliveryManager:
     def deliver_recipe(self, plate_kitchen_object: PlateKitchenObject):
         """Check if recipe ingredients match plate ingredients"""
         
+        # Input validation
+        if plate_kitchen_object is None:
+            raise ValueError("plate_kitchen_object cannot be None")
+        
+        plate_ingredients = plate_kitchen_object.get_kitchen_object_so_list()
+        
+        # Validate plate has ingredients
+        if not plate_ingredients:
+            self.on_recipe_failed.invoke(self)
+            return
+        
         for i, waiting_recipe_so in enumerate(self._waiting_recipe_so_list):
-            plate_ingredients = plate_kitchen_object.get_kitchen_object_so_list()
             
             # Check if ingredient counts match
             if len(waiting_recipe_so.kitchen_object_so_list) == len(plate_ingredients):
@@ -161,9 +183,11 @@ class DeliveryManager:
                 for recipe_kitchen_object_so in waiting_recipe_so.kitchen_object_so_list:
                     ingredient_found = False
                     
-                    # Match with plate ingredients
+                    # Match with plate ingredients using proper object comparison
                     for plate_kitchen_object_so in plate_ingredients:
-                        if plate_kitchen_object_so == recipe_kitchen_object_so:
+                        # Compare by object_id and name for security
+                        if (plate_kitchen_object_so.object_id == recipe_kitchen_object_so.object_id and
+                            plate_kitchen_object_so.name == recipe_kitchen_object_so.name):
                             ingredient_found = True
                             break
                     
