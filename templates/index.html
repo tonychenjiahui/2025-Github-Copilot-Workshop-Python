@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Timer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Pomodoro Timer</h1>
+        </header>
+        
+        <main>
+            <div class="timer-section">
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="work">Work</button>
+                    <button class="mode-btn" data-mode="shortBreak">Short Break</button>
+                    <button class="mode-btn" data-mode="longBreak">Long Break</button>
+                </div>
+                
+                <div class="timer-display">
+                    <div class="time-left" id="timeDisplay">25:00</div>
+                </div>
+                
+                <div class="timer-controls">
+                    <button class="control-btn start-btn" id="startBtn">Start</button>
+                    <button class="control-btn pause-btn hidden" id="pauseBtn">Pause</button>
+                    <button class="control-btn reset-btn" id="resetBtn">Reset</button>
+                </div>
+                
+                <div class="session-info">
+                    <p>Session: <span id="sessionCount">1</span></p>
+                    <p>Mode: <span id="currentMode">Work</span></p>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Stay focused and productive! 🍅</p>
+        </footer>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
+</body>
+</html>
